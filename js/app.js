@@ -1,11 +1,9 @@
 /* ══════════════════════════════════════════
-   APP.JS — Main interactions, animations, particles
+   APP.JS — Three.js 3D, GSAP, particles, interactions
 ══════════════════════════════════════════ */
 
-/* ── GSAP registration ─────────────────── */
 gsap.registerPlugin(ScrollTrigger);
 
-/* ── State ─────────────────────────────── */
 const isMobile = () => window.innerWidth <= 768;
 
 /* ══════════════════════════════════════════
@@ -13,16 +11,15 @@ const isMobile = () => window.innerWidth <= 768;
 ══════════════════════════════════════════ */
 (function initLoader() {
   document.body.classList.add('loading');
-
   const bar    = document.getElementById('loaderBar');
   const status = document.getElementById('loaderStatus');
   const loader = document.getElementById('loader');
 
   const steps = [
-    { pct: 15, msg: 'LOADING OPERATOR PROFILE...' },
-    { pct: 38, msg: 'SCANNING SKILL MATRIX...' },
-    { pct: 62, msg: 'DECRYPTING MISSION FILES...' },
-    { pct: 84, msg: 'CALIBRATING ZORO INTELLIGENCE...' },
+    { pct: 18,  msg: 'LOADING OPERATOR PROFILE...' },
+    { pct: 42,  msg: 'SCANNING SKILL MATRIX...' },
+    { pct: 68,  msg: 'DECRYPTING MISSION FILES...' },
+    { pct: 88,  msg: 'CALIBRATING ZORO INTELLIGENCE...' },
     { pct: 100, msg: 'SYSTEM READY — WELCOME.' },
   ];
 
@@ -32,14 +29,14 @@ const isMobile = () => window.innerWidth <= 768;
     const s = steps[i++];
     bar.style.width = s.pct + '%';
     status.textContent = s.msg;
-    if (i < steps.length) setTimeout(next, 380 + Math.random() * 220);
-    else setTimeout(dismissLoader, 480);
+    if (i < steps.length) setTimeout(next, 350 + Math.random() * 200);
+    else setTimeout(dismiss, 500);
   }
   setTimeout(next, 200);
 
-  function dismissLoader() {
+  function dismiss() {
     gsap.to(loader, {
-      opacity: 0, duration: 0.7, ease: 'power2.inOut',
+      opacity: 0, duration: 0.8, ease: 'power2.inOut',
       onComplete: () => {
         loader.style.display = 'none';
         document.body.classList.remove('loading');
@@ -56,12 +53,10 @@ const isMobile = () => window.innerWidth <= 768;
   if (isMobile()) return;
   const dot  = document.getElementById('cursorDot');
   const ring = document.getElementById('cursorRing');
-  let mx = -100, my = -100;
 
   document.addEventListener('mousemove', e => {
-    mx = e.clientX; my = e.clientY;
-    gsap.to(dot,  { x: mx, y: my, duration: 0.08, ease: 'none' });
-    gsap.to(ring, { x: mx, y: my, duration: 0.22, ease: 'power2.out' });
+    gsap.to(dot,  { x: e.clientX, y: e.clientY, duration: 0.08, ease: 'none' });
+    gsap.to(ring, { x: e.clientX, y: e.clientY, duration: 0.22, ease: 'power2.out' });
   });
 
   document.querySelectorAll('a, button, .tilt-card, .zoro-chip, .zoro-fab, .mission-btn').forEach(el => {
@@ -71,100 +66,185 @@ const isMobile = () => window.innerWidth <= 768;
 })();
 
 /* ══════════════════════════════════════════
-   3. PARTICLE CANVAS (Hero)
+   3. THREE.JS HERO SCENE
 ══════════════════════════════════════════ */
-(function initParticles() {
-  const canvas = document.getElementById('heroCanvas');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
+(function initThreeScene() {
+  const hero = document.getElementById('hero');
+  if (!hero || typeof THREE === 'undefined') return;
 
-  let W, H, particles = [], mouseX = 0, mouseY = 0;
-  const COUNT = isMobile() ? 60 : 110;
-  const MAX_DIST = 130;
-  const MOUSE_RADIUS = 160;
+  // Remove old 2D canvas if present
+  const old = document.getElementById('heroCanvas');
+  if (old) old.remove();
 
-  function resize() {
-    W = canvas.width  = canvas.offsetWidth;
-    H = canvas.height = canvas.offsetHeight;
-  }
-  window.addEventListener('resize', resize);
-  resize();
+  let W = hero.offsetWidth;
+  let H = hero.offsetHeight;
+  let mouseX = 0, mouseY = 0;
+  let targetX = 0, targetY = 0;
 
-  class Particle {
-    constructor() { this.reset(true); }
-    reset(init = false) {
-      this.x  = Math.random() * W;
-      this.y  = init ? Math.random() * H : (Math.random() > 0.5 ? -10 : H + 10);
-      this.vx = (Math.random() - 0.5) * 0.35;
-      this.vy = (Math.random() - 0.5) * 0.35;
-      this.r  = Math.random() * 1.6 + 0.5;
-      this.alpha = Math.random() * 0.55 + 0.15;
-      this.color = Math.random() > 0.6 ? '139,92,246' : Math.random() > 0.5 ? '6,214,160' : '240,171,252';
-    }
-    update() {
-      // Slight mouse repulsion
-      const dx = this.x - mouseX, dy = this.y - mouseY;
-      const dist = Math.sqrt(dx*dx + dy*dy);
-      if (dist < MOUSE_RADIUS) {
-        const force = (MOUSE_RADIUS - dist) / MOUSE_RADIUS * 0.012;
-        this.vx += (dx / dist) * force;
-        this.vy += (dy / dist) * force;
-      }
-      this.vx *= 0.985;
-      this.vy *= 0.985;
-      this.x += this.vx;
-      this.y += this.vy;
-      if (this.x < -20 || this.x > W + 20 || this.y < -20 || this.y > H + 20) this.reset();
-    }
-    draw() {
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(${this.color},${this.alpha})`;
-      ctx.fill();
-    }
-  }
+  /* Renderer */
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setSize(W, H);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setClearColor(0x000000, 0);
+  Object.assign(renderer.domElement.style, {
+    position: 'absolute', inset: '0', width: '100%', height: '100%', zIndex: '0'
+  });
+  hero.insertBefore(renderer.domElement, hero.firstChild);
 
-  for (let i = 0; i < COUNT; i++) particles.push(new Particle());
+  /* Scene & Camera */
+  const scene  = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(55, W / H, 0.1, 200);
+  camera.position.set(0, 0, 38);
 
-  canvas.addEventListener('mousemove', e => {
-    const rect = canvas.getBoundingClientRect();
-    mouseX = e.clientX - rect.left;
-    mouseY = e.clientY - rect.top;
+  /* Lights */
+  scene.add(new THREE.AmbientLight(0xffffff, 0.15));
+
+  const lights = [
+    { color: 0xa78bfa, intensity: 4, range: 80, pos: [18, 18, 12] },
+    { color: 0x34d399, intensity: 3, range: 80, pos: [-18, -14, 8]  },
+    { color: 0xf9a8d4, intensity: 2, range: 60, pos: [-6,  20, -6]  },
+    { color: 0x93c5fd, intensity: 2, range: 60, pos: [14, -18, -4]  },
+  ].map(l => {
+    const pl = new THREE.PointLight(l.color, l.intensity, l.range);
+    pl.position.set(...l.pos);
+    scene.add(pl);
+    return pl;
   });
 
-  function drawLines() {
-    for (let i = 0; i < particles.length; i++) {
-      for (let j = i + 1; j < particles.length; j++) {
-        const dx = particles[i].x - particles[j].x;
-        const dy = particles[i].y - particles[j].y;
-        const dist = Math.sqrt(dx*dx + dy*dy);
-        if (dist < MAX_DIST) {
-          const alpha = (1 - dist / MAX_DIST) * 0.18;
-          ctx.beginPath();
-          ctx.moveTo(particles[i].x, particles[i].y);
-          ctx.lineTo(particles[j].x, particles[j].y);
-          ctx.strokeStyle = `rgba(139,92,246,${alpha})`;
-          ctx.lineWidth = 0.8;
-          ctx.stroke();
-        }
-      }
-    }
-  }
+  /* ── Floating wireframe shapes ─────────── */
+  const shapeDefs = [
+    { Geo: THREE.IcosahedronGeometry, args: [3.2, 0],  color: 0xc4b5fd, x: -14, y:  7, z: -8  },
+    { Geo: THREE.OctahedronGeometry,  args: [2.4, 0],  color: 0x6ee7b7, x:  15, y: -5, z: -12 },
+    { Geo: THREE.IcosahedronGeometry, args: [2.0, 0],  color: 0xfda4af, x:  -7, y: -9, z: -4  },
+    { Geo: THREE.TetrahedronGeometry, args: [2.8, 0],  color: 0xbae6fd, x:  12, y: 12, z: -14 },
+    { Geo: THREE.OctahedronGeometry,  args: [1.8, 0],  color: 0xfcd34d, x: -16, y: -1, z: -16 },
+    { Geo: THREE.IcosahedronGeometry, args: [1.4, 0],  color: 0xc4b5fd, x:   6, y:-13, z: -6  },
+    { Geo: THREE.TetrahedronGeometry, args: [1.6, 0],  color: 0xa7f3d0, x:  18, y:  4, z: -10 },
+    { Geo: THREE.OctahedronGeometry,  args: [2.6, 0],  color: 0xf9a8d4, x:  -4, y: 14, z: -18 },
+  ];
 
+  const shapes = shapeDefs.map(d => {
+    const geo = new d.Geo(...d.args);
+    const mat = new THREE.MeshPhongMaterial({
+      color: d.color,
+      emissive: d.color,
+      emissiveIntensity: 0.08,
+      wireframe: true,
+      transparent: true,
+      opacity: 0.55,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(d.x, d.y, d.z);
+    mesh.rotation.set(Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, 0);
+    scene.add(mesh);
+    return {
+      mesh,
+      rx: (Math.random() - 0.5) * 0.007,
+      ry: (Math.random() - 0.5) * 0.009,
+      initY: d.y,
+      floatAmp: 0.8 + Math.random() * 0.6,
+      floatOff: Math.random() * Math.PI * 2,
+      floatSpd: 0.25 + Math.random() * 0.2,
+    };
+  });
+
+  /* ── Solid (non-wireframe) inner shapes for depth ── */
+  const solidDefs = [
+    { Geo: THREE.IcosahedronGeometry, args: [1.6, 1], color: 0x7c3aed, x: -10, y:  3, z: -20 },
+    { Geo: THREE.OctahedronGeometry,  args: [1.2, 0], color: 0x065f46, x:  9,  y: -8, z: -22 },
+  ];
+  solidDefs.forEach(d => {
+    const geo = new d.Geo(...d.args);
+    const mat = new THREE.MeshPhongMaterial({
+      color: d.color, transparent: true, opacity: 0.18, wireframe: false,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(d.x, d.y, d.z);
+    scene.add(mesh);
+    shapes.push({ mesh, rx: 0.003, ry: 0.004, initY: d.y, floatAmp: 0.5, floatOff: Math.random() * Math.PI * 2, floatSpd: 0.15 });
+  });
+
+  /* ── Particle field ─────────────────────── */
+  const PCOUNT = isMobile() ? 120 : 280;
+  const pPos   = new Float32Array(PCOUNT * 3);
+  const pColors = new Float32Array(PCOUNT * 3);
+  const palette = [
+    [0.77, 0.71, 0.98], // lavender
+    [0.41, 0.88, 0.6],  // mint
+    [0.98, 0.64, 0.83], // pink
+    [0.58, 0.78, 0.99], // blue
+  ];
+  for (let i = 0; i < PCOUNT; i++) {
+    pPos[i*3]   = (Math.random() - 0.5) * 90;
+    pPos[i*3+1] = (Math.random() - 0.5) * 70;
+    pPos[i*3+2] = (Math.random() - 0.5) * 30 - 5;
+    const c = palette[Math.floor(Math.random() * palette.length)];
+    pColors[i*3] = c[0]; pColors[i*3+1] = c[1]; pColors[i*3+2] = c[2];
+  }
+  const pGeo = new THREE.BufferGeometry();
+  pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+  pGeo.setAttribute('color',    new THREE.BufferAttribute(pColors, 3));
+  const pMat = new THREE.PointsMaterial({
+    size: 0.22, vertexColors: true, transparent: true, opacity: 0.7, sizeAttenuation: true,
+  });
+  const particleField = new THREE.Points(pGeo, pMat);
+  scene.add(particleField);
+
+  /* ── Mouse tracking ─────────────────────── */
+  hero.addEventListener('mousemove', e => {
+    const r = hero.getBoundingClientRect();
+    mouseX = ((e.clientX - r.left) / W - 0.5) * 2;
+    mouseY = ((e.clientY - r.top)  / H - 0.5) * 2;
+  });
+
+  /* ── Resize ─────────────────────────────── */
+  window.addEventListener('resize', () => {
+    W = hero.offsetWidth;
+    H = hero.offsetHeight;
+    renderer.setSize(W, H);
+    camera.aspect = W / H;
+    camera.updateProjectionMatrix();
+  });
+
+  /* ── Animation loop ─────────────────────── */
+  let t = 0;
   function animate() {
-    ctx.clearRect(0, 0, W, H);
-    particles.forEach(p => { p.update(); p.draw(); });
-    drawLines();
     requestAnimationFrame(animate);
+    t += 0.008;
+
+    // Smooth camera parallax on mouse
+    targetX += (mouseX * 4 - targetX) * 0.025;
+    targetY += (-mouseY * 2.5 - targetY) * 0.025;
+    camera.position.x = targetX;
+    camera.position.y = targetY;
+    camera.lookAt(scene.position);
+
+    // Orbit lights
+    lights[0].position.x = Math.sin(t * 0.4) * 22;
+    lights[0].position.y = Math.cos(t * 0.28) * 18;
+    lights[1].position.x = Math.cos(t * 0.35) * 20;
+    lights[1].position.y = Math.sin(t * 0.5)  * 15;
+
+    // Rotate & float each shape
+    shapes.forEach(s => {
+      s.mesh.rotation.x += s.rx;
+      s.mesh.rotation.y += s.ry;
+      s.mesh.position.y = s.initY + Math.sin(t * s.floatSpd + s.floatOff) * s.floatAmp;
+    });
+
+    // Slowly drift particle field
+    particleField.rotation.y += 0.0006;
+    particleField.rotation.x += 0.0002;
+
+    renderer.render(scene, camera);
   }
   animate();
 })();
 
 /* ══════════════════════════════════════════
-   4. HERO ENTRANCE
+   4. HERO ENTRANCE & TYPING
 ══════════════════════════════════════════ */
 function initHeroEntrance() {
-  // Typing animation
   const words = [
     'Business Analyst',
     'Strategic Consultant',
@@ -175,6 +255,7 @@ function initHeroEntrance() {
   ];
   let wIdx = 0, cIdx = 0, deleting = false;
   const el = document.getElementById('heroTyped');
+  if (!el) return;
 
   function typeLoop() {
     const word = words[wIdx];
@@ -185,17 +266,15 @@ function initHeroEntrance() {
       el.textContent = word.slice(0, --cIdx);
       if (cIdx === 0) { deleting = false; wIdx = (wIdx + 1) % words.length; }
     }
-    setTimeout(typeLoop, deleting ? 55 : 90);
+    setTimeout(typeLoop, deleting ? 52 : 88);
   }
   typeLoop();
 
-  // Staggered hero reveal
-  const revealEls = document.querySelectorAll('#hero .reveal-up');
-  revealEls.forEach((el, i) => {
-    setTimeout(() => el.classList.add('revealed'), 100 + i * 160);
+  // Stagger hero elements in
+  document.querySelectorAll('#hero .reveal-up').forEach((el, i) => {
+    setTimeout(() => el.classList.add('revealed'), 100 + i * 150);
   });
 
-  // Scroll-based reveals for all other sections
   initScrollReveals();
 }
 
@@ -203,57 +282,45 @@ function initHeroEntrance() {
    5. SCROLL REVEALS
 ══════════════════════════════════════════ */
 function initScrollReveals() {
-  const allReveal = document.querySelectorAll('.reveal-up:not(#hero *), .reveal-left, .reveal-right');
-
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('revealed');
-        observer.unobserve(entry.target);
-      }
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) { e.target.classList.add('revealed'); obs.unobserve(e.target); }
     });
-  }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+  }, { threshold: 0.1, rootMargin: '0px 0px -30px 0px' });
 
-  allReveal.forEach(el => observer.observe(el));
+  document.querySelectorAll('.reveal-up:not(#hero *), .reveal-left, .reveal-right')
+    .forEach(el => obs.observe(el));
 
-  // Skill bar fills
-  const xpBars = document.querySelectorAll('.skill-xp-fill');
-  const barObserver = new IntersectionObserver(entries => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        const target = entry.target.dataset.width;
-        entry.target.style.width = target;
-        barObserver.unobserve(entry.target);
+  /* Skill XP bars */
+  const barObs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.style.width = e.target.dataset.width;
+        barObs.unobserve(e.target);
       }
     });
   }, { threshold: 0.3 });
-  xpBars.forEach(b => barObserver.observe(b));
+  document.querySelectorAll('.skill-xp-fill').forEach(b => barObs.observe(b));
 
-  // Counter animations
-  const counters = document.querySelectorAll('.stat-number[data-count]');
-  const cntObserver = new IntersectionObserver(entries => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        animateCounter(entry.target);
-        cntObserver.unobserve(entry.target);
-      }
+  /* Counters */
+  const cntObs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) { animateCounter(e.target); cntObs.unobserve(e.target); }
     });
   }, { threshold: 0.5 });
-  counters.forEach(c => cntObserver.observe(c));
+  document.querySelectorAll('.stat-number[data-count]').forEach(c => cntObs.observe(c));
 }
 
 function animateCounter(el) {
   const target = parseInt(el.dataset.count, 10);
-  const duration = 1600;
-  const start = performance.now();
-  function update(now) {
-    const t = Math.min((now - start) / duration, 1);
-    const ease = 1 - Math.pow(1 - t, 3); // ease-out-cubic
-    el.textContent = Math.floor(ease * target);
-    if (t < 1) requestAnimationFrame(update);
+  const start  = performance.now();
+  const dur    = 1600;
+  (function tick(now) {
+    const p = Math.min((now - start) / dur, 1);
+    el.textContent = Math.floor((1 - Math.pow(1 - p, 3)) * target);
+    if (p < 1) requestAnimationFrame(tick);
     else el.textContent = target;
-  }
-  requestAnimationFrame(update);
+  })(performance.now());
 }
 
 /* ══════════════════════════════════════════
@@ -262,56 +329,46 @@ function animateCounter(el) {
 (function initNavbar() {
   const navbar = document.getElementById('navbar');
   const links  = document.querySelectorAll('.nav-link');
+  if (!navbar) return;
 
   window.addEventListener('scroll', () => {
     navbar.classList.toggle('scrolled', window.scrollY > 60);
-    updateActiveLink();
+    const sy = window.scrollY + 120;
+    let cur = '';
+    ['about','skills','experience','projects','services','contact'].forEach(id => {
+      const s = document.getElementById(id);
+      if (s && s.offsetTop <= sy) cur = id;
+    });
+    links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + cur));
   }, { passive: true });
 
-  function updateActiveLink() {
-    const scrollY = window.scrollY + 120;
-    const sections = ['about','skills','experience','projects','services','contact'];
-    let current = '';
-    sections.forEach(id => {
-      const el = document.getElementById(id);
-      if (el && el.offsetTop <= scrollY) current = id;
-    });
-    links.forEach(l => {
-      l.classList.toggle('active', l.getAttribute('href') === '#' + current);
-    });
-  }
-
-  // Mobile menu
   const burger = document.getElementById('navBurger');
   const menu   = document.getElementById('mobileMenu');
   const close  = document.getElementById('mobileClose');
-  const mobLinks = document.querySelectorAll('.mobile-link');
-
-  burger.addEventListener('click', () => menu.classList.add('open'));
-  close.addEventListener('click',  () => menu.classList.remove('open'));
-  mobLinks.forEach(l => l.addEventListener('click', () => menu.classList.remove('open')));
+  if (burger && menu && close) {
+    burger.addEventListener('click', () => menu.classList.add('open'));
+    close.addEventListener('click',  () => menu.classList.remove('open'));
+    document.querySelectorAll('.mobile-link').forEach(l =>
+      l.addEventListener('click', () => menu.classList.remove('open')));
+  }
 })();
 
 /* ══════════════════════════════════════════
-   7. TILT CARDS
+   7. 3D TILT on cards
 ══════════════════════════════════════════ */
 (function initTilt() {
   if (isMobile()) return;
   document.querySelectorAll('.tilt-card').forEach(card => {
     card.addEventListener('mousemove', e => {
-      const rect = card.getBoundingClientRect();
-      const cx = rect.left + rect.width  / 2;
-      const cy = rect.top  + rect.height / 2;
-      const dx = (e.clientX - cx) / (rect.width  / 2);
-      const dy = (e.clientY - cy) / (rect.height / 2);
-      const rotX =  dy * -7;
-      const rotY =  dx *  7;
-      card.style.transform = `perspective(800px) rotateX(${rotX}deg) rotateY(${rotY}deg) translateZ(4px)`;
+      const r  = card.getBoundingClientRect();
+      const dx = (e.clientX - r.left - r.width  / 2) / (r.width  / 2);
+      const dy = (e.clientY - r.top  - r.height / 2) / (r.height / 2);
+      card.style.transform = `perspective(900px) rotateX(${-dy*6}deg) rotateY(${dx*6}deg) translateZ(6px)`;
     });
     card.addEventListener('mouseleave', () => {
-      card.style.transition = 'transform 0.5s cubic-bezier(0.22,1,0.36,1)';
-      card.style.transform  = 'perspective(800px) rotateX(0deg) rotateY(0deg) translateZ(0)';
-      setTimeout(() => card.style.transition = '', 500);
+      card.style.transition = 'transform 0.55s cubic-bezier(0.22,1,0.36,1)';
+      card.style.transform  = 'perspective(900px) rotateX(0) rotateY(0) translateZ(0)';
+      setTimeout(() => (card.style.transition = ''), 550);
     });
   });
 })();
@@ -323,16 +380,13 @@ function animateCounter(el) {
   if (isMobile()) return;
   document.querySelectorAll('.magnetic').forEach(btn => {
     btn.addEventListener('mousemove', e => {
-      const rect = btn.getBoundingClientRect();
-      const cx = rect.left + rect.width  / 2;
-      const cy = rect.top  + rect.height / 2;
-      const dx = (e.clientX - cx) * 0.28;
-      const dy = (e.clientY - cy) * 0.28;
+      const r  = btn.getBoundingClientRect();
+      const dx = (e.clientX - r.left - r.width  / 2) * 0.3;
+      const dy = (e.clientY - r.top  - r.height / 2) * 0.3;
       gsap.to(btn, { x: dx, y: dy, duration: 0.3, ease: 'power2.out' });
     });
-    btn.addEventListener('mouseleave', () => {
-      gsap.to(btn, { x: 0, y: 0, duration: 0.5, ease: 'elastic.out(1,0.5)' });
-    });
+    btn.addEventListener('mouseleave', () =>
+      gsap.to(btn, { x: 0, y: 0, duration: 0.5, ease: 'elastic.out(1,0.5)' }));
   });
 })();
 
@@ -343,35 +397,32 @@ function animateCounter(el) {
   const form    = document.getElementById('contactForm');
   const success = document.getElementById('formSuccess');
   if (!form) return;
-
   form.addEventListener('submit', e => {
     e.preventDefault();
+    if (!form.checkValidity()) { form.reportValidity(); return; }
     const btn = form.querySelector('button[type="submit"]');
     const txt = btn.querySelector('.btn-text');
-    if (!form.checkValidity()) { form.reportValidity(); return; }
-
     txt.textContent = 'Sending...';
     btn.disabled = true;
-
-    // Simulate sending (replace with Formspree/EmailJS endpoint)
     setTimeout(() => {
       form.reset();
       btn.disabled = false;
       txt.textContent = 'Send Message';
-      success.style.display = 'block';
-      gsap.from(success, { opacity: 0, y: 10, duration: 0.4 });
-      setTimeout(() => { success.style.display = 'none'; }, 5000);
+      if (success) {
+        success.style.display = 'block';
+        gsap.from(success, { opacity: 0, y: 8, duration: 0.4 });
+        setTimeout(() => (success.style.display = 'none'), 5000);
+      }
     }, 1400);
   });
 })();
 
 /* ══════════════════════════════════════════
-   10. SMOOTH SCROLL for anchor links
+   10. SMOOTH ANCHOR SCROLL
 ══════════════════════════════════════════ */
 document.querySelectorAll('a[href^="#"]').forEach(a => {
   a.addEventListener('click', e => {
-    const id = a.getAttribute('href').slice(1);
-    const el = document.getElementById(id);
+    const el = document.getElementById(a.getAttribute('href').slice(1));
     if (!el) return;
     e.preventDefault();
     el.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -379,41 +430,30 @@ document.querySelectorAll('a[href^="#"]').forEach(a => {
 });
 
 /* ══════════════════════════════════════════
-   11. SECTION BACKGROUND PARALLAX (subtle)
+   11. HERO PARALLAX
 ══════════════════════════════════════════ */
-(function initParallax() {
+(function () {
   if (isMobile()) return;
+  const content = document.querySelector('.hero-content');
   window.addEventListener('scroll', () => {
-    const y = window.scrollY;
-    const heroContent = document.querySelector('.hero-content');
-    if (heroContent) heroContent.style.transform = `translateY(${y * 0.18}px)`;
+    if (content) content.style.transform = `translateY(${window.scrollY * 0.16}px)`;
   }, { passive: true });
 })();
 
 /* ══════════════════════════════════════════
-   12. ZORO FAB — Open/Close (wired in zoro.js too)
+   12. ZORO FAB
 ══════════════════════════════════════════ */
-window.openZoro  = function() { document.getElementById('zoroPanel').classList.add('open'); };
-window.closeZoro = function() { document.getElementById('zoroPanel').classList.remove('open'); };
+window.openZoro  = () => document.getElementById('zoroPanel')?.classList.add('open');
+window.closeZoro = () => document.getElementById('zoroPanel')?.classList.remove('open');
 
-document.getElementById('zoroFab').addEventListener('click', () => {
+document.getElementById('zoroFab')?.addEventListener('click', () => {
   const panel = document.getElementById('zoroPanel');
   panel.classList.toggle('open');
-  if (panel.classList.contains('open')) {
-    setTimeout(() => document.getElementById('zoroInput').focus(), 350);
-  }
+  if (panel.classList.contains('open'))
+    setTimeout(() => document.getElementById('zoroInput')?.focus(), 360);
 });
 
-document.getElementById('heroZoroBtn').addEventListener('click', () => {
+document.getElementById('heroZoroBtn')?.addEventListener('click', () => {
   window.openZoro();
-  setTimeout(() => document.getElementById('zoroInput').focus(), 400);
-});
-
-/* ══════════════════════════════════════════
-   13. CANVAS RESIZE on loader dismiss
-══════════════════════════════════════════ */
-// Handled inside initParticles via window resize listener.
-// Force a resize event after fonts/layout settle.
-window.addEventListener('load', () => {
-  setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
+  setTimeout(() => document.getElementById('zoroInput')?.focus(), 400);
 });
