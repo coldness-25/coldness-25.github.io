@@ -16,11 +16,11 @@ const isMobile = () => window.innerWidth <= 768;
   const loader = document.getElementById('loader');
 
   const steps = [
-    { pct: 18,  msg: 'LOADING OPERATOR PROFILE...' },
-    { pct: 42,  msg: 'SCANNING SKILL MATRIX...' },
-    { pct: 68,  msg: 'DECRYPTING MISSION FILES...' },
-    { pct: 88,  msg: 'CALIBRATING ZORO INTELLIGENCE...' },
-    { pct: 100, msg: 'SYSTEM READY — WELCOME.' },
+    { pct: 18,  msg: 'LOADING PROFILE...' },
+    { pct: 42,  msg: 'SCANNING SKILLS...' },
+    { pct: 68,  msg: 'LOADING PROJECTS...' },
+    { pct: 88,  msg: 'STARTING ZORO...' },
+    { pct: 100, msg: 'READY. WELCOME.' },
   ];
 
   let i = 0;
@@ -100,10 +100,10 @@ const isMobile = () => window.innerWidth <= 768;
   scene.add(new THREE.AmbientLight(0xffffff, 0.15));
 
   const lights = [
-    { color: 0xa78bfa, intensity: 4, range: 80, pos: [18, 18, 12] },
-    { color: 0x34d399, intensity: 3, range: 80, pos: [-18, -14, 8]  },
-    { color: 0xf9a8d4, intensity: 2, range: 60, pos: [-6,  20, -6]  },
-    { color: 0x93c5fd, intensity: 2, range: 60, pos: [14, -18, -4]  },
+    { color: 0xff9a8b, intensity: 4, range: 80, pos: [18, 18, 12] },   // coral
+    { color: 0x7dd9b2, intensity: 3, range: 80, pos: [-18, -14, 8]  },  // mint
+    { color: 0xf4a7b9, intensity: 2, range: 60, pos: [-6,  20, -6]  },  // rose
+    { color: 0x6ecbce, intensity: 2, range: 60, pos: [14, -18, -4]  },  // sky
   ].map(l => {
     const pl = new THREE.PointLight(l.color, l.intensity, l.range);
     pl.position.set(...l.pos);
@@ -113,14 +113,14 @@ const isMobile = () => window.innerWidth <= 768;
 
   /* ── Floating wireframe shapes ─────────── */
   const shapeDefs = [
-    { Geo: THREE.IcosahedronGeometry, args: [3.2, 0],  color: 0xc4b5fd, x: -14, y:  7, z: -8  },
-    { Geo: THREE.OctahedronGeometry,  args: [2.4, 0],  color: 0x6ee7b7, x:  15, y: -5, z: -12 },
-    { Geo: THREE.IcosahedronGeometry, args: [2.0, 0],  color: 0xfda4af, x:  -7, y: -9, z: -4  },
-    { Geo: THREE.TetrahedronGeometry, args: [2.8, 0],  color: 0xbae6fd, x:  12, y: 12, z: -14 },
-    { Geo: THREE.OctahedronGeometry,  args: [1.8, 0],  color: 0xfcd34d, x: -16, y: -1, z: -16 },
-    { Geo: THREE.IcosahedronGeometry, args: [1.4, 0],  color: 0xc4b5fd, x:   6, y:-13, z: -6  },
-    { Geo: THREE.TetrahedronGeometry, args: [1.6, 0],  color: 0xa7f3d0, x:  18, y:  4, z: -10 },
-    { Geo: THREE.OctahedronGeometry,  args: [2.6, 0],  color: 0xf9a8d4, x:  -4, y: 14, z: -18 },
+    { Geo: THREE.IcosahedronGeometry, args: [3.2, 0],  color: 0xffb5a7, x: -14, y:  7, z: -8  },  // coral
+    { Geo: THREE.OctahedronGeometry,  args: [2.4, 0],  color: 0x7dd9b2, x:  15, y: -5, z: -12 },  // mint
+    { Geo: THREE.IcosahedronGeometry, args: [2.0, 0],  color: 0xfda4af, x:  -7, y: -9, z: -4  },  // rose
+    { Geo: THREE.TetrahedronGeometry, args: [2.8, 0],  color: 0xa8dadc, x:  12, y: 12, z: -14 },  // sky
+    { Geo: THREE.OctahedronGeometry,  args: [1.8, 0],  color: 0xffc9a0, x: -16, y: -1, z: -16 },  // peach
+    { Geo: THREE.IcosahedronGeometry, args: [1.4, 0],  color: 0xffb5a7, x:   6, y:-13, z: -6  },  // coral
+    { Geo: THREE.TetrahedronGeometry, args: [1.6, 0],  color: 0xa8e6cf, x:  18, y:  4, z: -10 },  // mint
+    { Geo: THREE.OctahedronGeometry,  args: [2.6, 0],  color: 0xf4a7b9, x:  -4, y: 14, z: -18 },  // rose
   ];
 
   const shapes = shapeDefs.map(d => {
@@ -150,8 +150,8 @@ const isMobile = () => window.innerWidth <= 768;
 
   /* ── Solid (non-wireframe) inner shapes for depth ── */
   const solidDefs = [
-    { Geo: THREE.IcosahedronGeometry, args: [1.6, 1], color: 0x7c3aed, x: -10, y:  3, z: -20 },
-    { Geo: THREE.OctahedronGeometry,  args: [1.2, 0], color: 0x065f46, x:  9,  y: -8, z: -22 },
+    { Geo: THREE.IcosahedronGeometry, args: [1.6, 1], color: 0xe05a47, x: -10, y:  3, z: -20 },
+    { Geo: THREE.OctahedronGeometry,  args: [1.2, 0], color: 0x0d6e5c, x:  9,  y: -8, z: -22 },
   ];
   solidDefs.forEach(d => {
     const geo = new d.Geo(...d.args);
@@ -169,10 +169,10 @@ const isMobile = () => window.innerWidth <= 768;
   const pPos   = new Float32Array(PCOUNT * 3);
   const pColors = new Float32Array(PCOUNT * 3);
   const palette = [
-    [0.77, 0.71, 0.98], // lavender
-    [0.41, 0.88, 0.6],  // mint
-    [0.98, 0.64, 0.83], // pink
-    [0.58, 0.78, 0.99], // blue
+    [1.0, 0.60, 0.55],  // coral
+    [0.49, 0.85, 0.70], // mint
+    [0.95, 0.65, 0.72], // rose
+    [0.43, 0.79, 0.81], // sky
   ];
   for (let i = 0; i < PCOUNT; i++) {
     pPos[i*3]   = (Math.random() - 0.5) * 90;
